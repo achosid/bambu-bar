@@ -42,6 +42,8 @@ xcodebuild -project BambuBar.xcodeproj -scheme BambuBar -configuration "$CONFIG"
 rm -rf "$APP"
 mkdir -p "${APP:h}"
 ditto "$DERIVED/Build/Products/$CONFIG/Bambu Bar.app" "$APP"
+# Folders synced by iCloud or another file provider tag files with xattrs that codesign rejects.
+xattr -cr "$APP"
 
 if [[ -z "${SIGN_IDENTITY:-}" ]]; then
   SIGN_IDENTITY=$(security find-identity -v -p codesigning | awk -F'"' '/Developer ID Application/ {print $2; exit}')
