@@ -140,14 +140,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 enum AppSection: String, CaseIterable, Identifiable {
-    case overview, filament, widgets, settings, about
+    case overview, filament, settings, about
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .overview: return "Printer"
         case .filament: return "Filament"
-        case .widgets: return "Widgets"
         case .settings: return "Settings"
         case .about: return "About"
         }
@@ -157,7 +156,6 @@ enum AppSection: String, CaseIterable, Identifiable {
         switch self {
         case .overview: return "printer.fill"
         case .filament: return "circle.circle.fill"
-        case .widgets: return "widget.medium"
         case .settings: return "gearshape.fill"
         case .about: return "info.circle.fill"
         }

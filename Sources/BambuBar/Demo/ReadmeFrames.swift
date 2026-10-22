@@ -393,7 +393,7 @@ private struct ReadmeWindow: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 2) {
             Color.clear.frame(height: 44)
-            ForEach([AppSection.overview, .filament, .widgets]) { row($0) }
+            ForEach([AppSection.overview, .filament]) { row($0) }
             Color.clear.frame(height: 14)
             ForEach([AppSection.settings, .about]) { row($0) }
             Spacer()

@@ -36,7 +36,7 @@ struct AboutPage: View {
 
             section("How it works") {
                 paragraph("Bambu Bar connects straight to your printer on the local network, the same way Bambu Studio does in LAN mode: an encrypted MQTT connection on port 8883, signed in with the printer's access code. The printer's certificate is checked against Bambu Lab's own certificate authority.")
-                paragraph("The printer streams its status about once a second. Bambu Bar shows it in the menu bar, keeps a short history of your prints, and shares a snapshot with its widget through a private container on this Mac.")
+                paragraph("The printer streams its status about once a second. Bambu Bar shows it in the menu bar and keeps a short history of your prints.")
             }
 
             section("Privacy") {

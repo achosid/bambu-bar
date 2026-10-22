@@ -140,15 +140,6 @@ struct SettingsPage: View {
                     .font(.system(size: 11.5)).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-
-            group("Desktop widget", symbol: "widget.small") {
-                HStack {
-                    Text("See what each widget size shows, your printers as widgets, and how to add one.")
-                        .font(.system(size: 11.5)).foregroundStyle(.secondary)
-                    Spacer()
-                    Button("Show Widgets") { MainWindow.show(.widgets) }
-                }
-            }
         }
         .onAppear { name = store.config?.name ?? "" }
         .onChange(of: store.config) { name = store.config?.name ?? "" }

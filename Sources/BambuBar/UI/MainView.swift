@@ -9,7 +9,7 @@ struct MainView: View {
         NavigationSplitView {
             List(selection: $navigation.section) {
                 Section {
-                    ForEach([AppSection.overview, .filament, .widgets]) { row($0) }
+                    ForEach([AppSection.overview, .filament]) { row($0) }
                 }
                 Section {
                     ForEach([AppSection.settings, .about]) { row($0) }
@@ -52,7 +52,6 @@ struct MainView: View {
         case .overview:
             if store.isConfigured && !navigation.addingPrinter { OverviewPage() } else { SetupPage() }
         case .filament: FilamentPage()
-        case .widgets: WidgetsPage()
         case .settings: SettingsPage()
         case .about: AboutPage()
         }
