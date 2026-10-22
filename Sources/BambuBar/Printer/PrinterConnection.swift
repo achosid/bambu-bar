@@ -61,7 +61,8 @@ enum PrinterModels {
 }
 
 /// Keeps one MQTT session to the printer alive: connects, re-requests a full report, merges the deltas
-/// into a status, and reconnects with back-off when the printer drops off the network or the Mac sleeps.
+/// into a status, and reconnects with back-off when the printer drops off the network or the Mac sleeps,
+/// and right away when this Mac changes networks (Wi-Fi to tethering, a VPN coming up).
 @MainActor
 final class PrinterConnection {
     enum Phase: Equatable {
@@ -97,6 +98,8 @@ final class PrinterConnection {
     private var watchdog: Timer?
     private var sequence = 0
     private var observers: [NSObjectProtocol] = []
+    private let pathMonitor = NWPathMonitor()
+    private var network: NetworkPath?
 
     init() {
         let center = NSWorkspace.shared.notificationCenter
@@ -106,6 +109,14 @@ final class PrinterConnection {
         observers.append(center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.suspend() }
         })
+        pathMonitor.pathUpdateHandler = { [weak self] path in
+            MainActor.assumeIsolated { self?.pathChanged(NetworkPath(path)) }
+        }
+        pathMonitor.start(queue: .main)
+    }
+
+    deinit {
+        pathMonitor.cancel()
     }
 
     func start(_ config: PrinterConfig, accessCode: String, insecure: Bool = false) {
@@ -280,9 +291,46 @@ final class PrinterConnection {
 
     private func scheduleReconnect() {
         let delays: [TimeInterval] = [2, 4, 8, 15, 30]
-        let delay = delays[min(attempt, delays.count - 1)]
+        // Without a network there's nothing to back off from; the path monitor reconnects when one appears,
+        // and the slowest retry covers a monitor that never says so.
+        let delay = network?.isUsable == false ? delays.last! : delays[min(attempt, delays.count - 1)]
         attempt += 1
-        reconnectSoon(after: delay)
+        // Spread out so two printers behind the same route don't retry in lockstep.
+        reconnectSoon(after: delay * .random(in: 0.85...1.15))
+    }
+
+    /// What this Mac's network looks like, reduced to what decides whether a connection survives it.
+    private struct NetworkPath: Equatable {
+        var isUsable: Bool
+        var interfaces: Set<String>
+        var gateways: Set<String>
+
+        init(_ path: NWPath) {
+            isUsable = path.status == .satisfied
+            interfaces = Set(path.availableInterfaces.map(\.name))
+            gateways = Set(path.gateways.map { "\($0)" })
+        }
+    }
+
+    private func pathChanged(_ new: NetworkPath) {
+        let old = network
+        network = new
+        guard let old, old != new, config != nil else { return }
+        // A rejected access code stays rejected whatever the network; everything else deserves a fresh try,
+        // including a certificate that failed on another network (where the address may belong to a stranger).
+        guard phase != .unauthorized else { return }
+        guard new.isUsable else {
+            retry?.invalidate()
+            closeClient()
+            phase = .offline("This Mac isn't on a network.")
+            return
+        }
+        // A connection that's talking survives an interface coming up (a VPN, a second link); it doesn't
+        // survive its network going away or changing underneath it (same Wi-Fi interface, new gateway).
+        if phase == .online, old.isUsable, new.interfaces.isSuperset(of: old.interfaces), new.gateways == old.gateways { return }
+        attempt = 0
+        // Give DHCP and the routes a moment to settle; further changes in that moment push it back.
+        reconnectSoon(after: 1.5)
     }
 
     private func reconnectSoon(after delay: TimeInterval) {
