@@ -36,7 +36,8 @@ final class MQTTClient {
     }
 
     enum Event {
-        case connected
+        /// With the path the connection took, for telling a LAN link from a VPN.
+        case connected(NWPath?)
         case message(topic: String, payload: Data)
         case disconnected(Failure)
     }
@@ -217,7 +218,7 @@ final class MQTTClient {
             isOpen = true
             connectDeadline?.cancel()
             startPings()
-            deliver(.connected)
+            deliver(.connected(connection?.currentPath))
         case 3:  // PUBLISH
             let qos = (header >> 1) & 0x03
             guard body.count >= 2 else { return }

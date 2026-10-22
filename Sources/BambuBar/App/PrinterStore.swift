@@ -331,6 +331,7 @@ final class PrinterStore {
     var accessCode: String? { current?.accessCode }
     var linkSummary: String { current?.linkSummary ?? "No printer set up" }
     var linkDetail: String? { current?.linkDetail }
+    var routeSummary: String? { current?.routeSummary }
 
     /// The current printer's most recent print (for "Last: …" and "finished 3h ago").
     var lastJob: JobRecord? { history(for: current?.id).first }

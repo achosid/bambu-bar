@@ -94,6 +94,7 @@ struct MenuPanel: View {
         var parts = [config.modelName]
         if store.phase == .online {
             if let wifi = store.status?.wifiSignal { parts.append(WiFi.describe(wifi)) } else { parts.append("Connected") }
+            if let route = store.routeSummary { parts.append(route) }
         } else {
             parts.append(store.linkSummary)
         }

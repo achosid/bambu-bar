@@ -36,6 +36,7 @@ struct OverviewPage: View {
     private var subtitle: String {
         guard let config = store.config else { return "" }
         var parts = ["Bambu Lab \(config.modelName)", config.host]
+        if let route = store.routeSummary { parts.append(route) }
         if let fw = store.status?.firmware { parts.append("Firmware \(fw)") }
         return parts.joined(separator: " · ")
     }

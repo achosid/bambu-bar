@@ -20,6 +20,8 @@ final class PrinterSession: Identifiable {
     var hasBaseline = false
     /// When the printer last sent anything, to the second ("Updated 3s ago").
     private(set) var lastHeard: Date?
+    /// LAN or VPN, while connected.
+    private(set) var route: PrinterConnection.Route?
 
     var onPhase: ((PrinterSession, PrinterConnection.Phase) -> Void)?
     var onStatus: ((PrinterSession, PrinterStatus?, PrinterStatus, Bool) -> Void)?
@@ -35,6 +37,7 @@ final class PrinterSession: Identifiable {
         id = config.serial
         self.config = config
         connection.onPhase = { [weak self] phase in self?.phaseChanged(phase) }
+        connection.onRoute = { [weak self] route in self?.route = route }
         connection.onStatus = { [weak self] status, doc in self?.received(status, canceled: ReportParser.wasCanceled(doc)) }
         connection.onAck = { [weak self] command, ok, reason in
             guard let self else { return }
@@ -98,7 +101,7 @@ final class PrinterSession: Identifiable {
         switch phase {
         case .idle: return "Not connected"
         case .connecting: return "Connecting…"
-        case .online: return "Connected"
+        case .online: return routeSummary.map { "Connected · \($0)" } ?? "Connected"
         case .offline: return "Offline"
         case .unauthorized: return "Access code rejected"
         case .certificate: return "Certificate not trusted"
@@ -113,6 +116,10 @@ final class PrinterSession: Identifiable {
         default: return nil
         }
     }
+
+    /// "On LAN" or "Remote via Tailscale" while connected: whether the printer is reached directly or through
+    /// the saved address over a VPN (a Tailscale subnet router away from home).
+    var routeSummary: String? { phase == .online ? route?.summary : nil }
 
     /// "Printing · 64%", "Ready", "Offline" — one line for menus and lists.
     var shortState: String {

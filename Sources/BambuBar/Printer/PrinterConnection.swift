@@ -74,7 +74,32 @@ final class PrinterConnection {
         case certificate(String)
     }
 
+    /// How the live connection reaches the printer, read from the interface it actually uses.
+    struct Route: Equatable {
+        var interface: String
+        /// Through a tunnel (Tailscale's subnet router, another VPN) rather than this Mac's own network.
+        var isTunnel: Bool
+        /// The tunnel is Tailscale: this end of the connection has a 100.64.0.0/10 address.
+        var isTailscale: Bool
+
+        init?(_ path: NWPath) {
+            guard let interface = path.availableInterfaces.first else { return nil }
+            self.interface = interface.name
+            isTunnel = interface.type == .other || interface.name.hasPrefix("utun")
+            if case .hostPort(.ipv4(let address), _)? = path.localEndpoint {
+                let bytes = [UInt8](address.rawValue)
+                isTailscale = isTunnel && bytes[0] == 100 && bytes[1] & 0xC0 == 64
+            } else {
+                isTailscale = false
+            }
+        }
+
+        /// "On LAN", "Remote via Tailscale".
+        var summary: String { isTunnel ? "Remote via \(isTailscale ? "Tailscale" : "VPN")" : "On LAN" }
+    }
+
     var onPhase: ((Phase) -> Void)?
+    var onRoute: ((Route?) -> Void)?
     var onStatus: ((PrinterStatus, ReportDocument) -> Void)?
     /// Any message from the printer, changed or not.
     var onHeartbeat: (() -> Void)?
@@ -83,6 +108,9 @@ final class PrinterConnection {
 
     private(set) var phase: Phase = .idle {
         didSet { if phase != oldValue { onPhase?(phase) } }
+    }
+    private(set) var route: Route? {
+        didSet { if route != oldValue { onRoute?(route) } }
     }
 
     private var config: PrinterConfig?
@@ -140,6 +168,7 @@ final class PrinterConnection {
         config = nil
         lastStatus = nil
         document.reset()
+        route = nil
         phase = .idle
     }
 
@@ -202,7 +231,8 @@ final class PrinterConnection {
     private func handle(_ event: MQTTClient.Event) {
         guard let config else { return }
         switch event {
-        case .connected:
+        case .connected(let path):
+            route = path.flatMap(Route.init)
             lastMessage = Date()
             client?.subscribe("device/\(config.serial)/report")
             sendRaw(["info": ["sequence_id": "0", "command": "get_version"]])
@@ -226,6 +256,7 @@ final class PrinterConnection {
             publishStatus()
         case .disconnected(let failure):
             client = nil
+            route = nil
             switch failure {
             case .refused(let code) where code == 4 || code == 5:
                 // A wrong access code won't fix itself; wait for the person to change it.

@@ -28,6 +28,7 @@ enum Probe {
             log("phase: \(phase)")
             if phase != .connecting, let verdict = BambuTrust.lastVerdict { log("certificate: \(verdict)") }
         }
+        connection.onRoute = { route in log("route: \(route.map { "\($0.summary) (\($0.interface))" } ?? "none")") }
         connection.onAck = { command, ok, reason in log("ack: \(command) \(ok ? "ok" : "failed") \(reason ?? "")") }
         connection.onStatus = { status, doc in
             reports += 1
