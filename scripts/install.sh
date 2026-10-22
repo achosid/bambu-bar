@@ -13,9 +13,5 @@ fi
 pkill -x "Bambu Bar" 2>/dev/null && sleep 1 || true
 rm -rf "$DEST"
 ditto "$APP" "$DEST"
-# Register the app (and its widget) with Launch Services so the widget gallery finds it.
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$DEST"
-# macOS keeps a running widget extension alive across app updates; stop it so widgets load the new one.
-pkill -f "Bambu Bar.app/Contents/PlugIns/BambuBarWidget.appex" 2>/dev/null || true
 open "$DEST"
 echo "==> Installed $DEST"
