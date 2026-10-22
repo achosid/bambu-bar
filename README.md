@@ -16,6 +16,40 @@ Built with Swift and SwiftUI. No account, no cloud service, no analytics.
 
 > Independent, community-developed software. Not affiliated with or endorsed by Bambu Lab. A P2S is the development printer; other Bambu Lab printers that speak the same LAN protocol (X1, P1, A1, H2) should work.
 
+## This fork
+
+A personal fork of [rolottr/bambu-bar](https://github.com/rolottr/bambu-bar) for ad-hoc signed builds and for watching printers from away from home over Tailscale. Tested with an H2D (with AMS) and an A1 mini on a separate IoT VLAN; both connect with the certificate authorities that already ship with the app. What it changes:
+
+- **No desktop widget.** The widget extension, its app group and the Widgets page are gone, so the app builds and runs fully without a Developer ID, and it never touches a group container. Mentions of the widget, its snapshot and the Widgets shortcut further down describe upstream, not this fork (here `⌘1` – `⌘4` are Printer, Filament, Settings, About).
+- **Hostnames.** The address field takes an IP address or a hostname. Discovery still follows a printer to a new DHCP address, but only when the saved address is a plain IP; a hostname is kept as entered, and a printer that isn't announcing keeps its saved address and keeps reconnecting.
+- **Network changes.** The app reconnects about a second and a half after this Mac changes networks (Wi-Fi, tethering, a hotel network, a VPN coming up) instead of waiting out its back-off, waits quietly while there's no network at all, and spreads its retries (2 s up to 30 s, with jitter).
+- **LAN or remote.** While connected, the status shows how the printer is reached: **On LAN**, or **Remote via Tailscale** (**Remote via VPN** for other tunnels), from the interface the connection actually uses. `--probe` prints it too.
+- **Building from an iCloud-synced folder.** `build.sh` strips the extended attributes iCloud adds, which `codesign` otherwise rejects.
+
+Ad-hoc signed builds look like a new app to the keychain after every rebuild, so macOS asks once per printer to let Bambu Bar read its access code. Choose **Always Allow**.
+
+### Printers on another subnet
+
+Printers announce themselves with UDP broadcasts, which don't cross subnets or VLANs. If your printers live on an IoT network, they won't appear in the list: choose **Enter address manually** and type the printer's IP address, its serial number (in the device information on the printer's screen, or in Bambu Studio's Device tab) and the access code. The router has to allow this Mac to reach the printer on TCP port 8883.
+
+### Away from home with Tailscale
+
+The app connects to the saved address directly, so a [Tailscale subnet router](https://tailscale.com/kb/1019/subnets) at home is all it needs. Only TCP 8883 to each printer is used.
+
+1. **Fix the printers' addresses.** Give each printer a DHCP reservation on your router.
+2. **Advertise the printers from a machine at home** that's on your tailnet and can reach them on port 8883 (a NAS, a Raspberry Pi). Advertising just the printers keeps the rest of the network off the tailnet:
+   ```sh
+   tailscale set --advertise-routes=192.168.20.50/32,192.168.20.51/32
+   ```
+   (Use your printers' addresses, or the whole subnet such as `192.168.20.0/24`. On Linux, enable IP forwarding as the Tailscale docs describe; leave subnet SNAT on so the router needs no route back.)
+3. **Approve the routes** for that machine in the Tailscale admin console (Machines → … → Edit route settings).
+4. **On this Mac**, keep **Use Tailscale subnets** on in the Tailscale menu.
+5. Optionally, restrict your Mac to `tcp:8883` on those addresses in the tailnet policy file.
+
+Away from home, the printers show **Connected · Remote via Tailscale**. At home the Mac also uses the Tailscale route (it's more specific than the default route), so the status says Remote there too and printer access depends on the subnet router being up; turn **Use Tailscale subnets** off at home if you'd rather go direct.
+
+If a network you join uses the same addresses as your printers, the Mac may reach some other device instead. The printer's certificate check refuses it (it must chain to Bambu Lab and name the printer's serial), the status shows **Certificate not trusted**, and the app tries again on the next network change.
+
 ## Why this app?
 
 The printer is in another room, and the slicer is a big app to keep open just to see how long is left. Bambu Bar keeps the answer in the menu bar: **64% · 1h 02m**. Click it and a panel shows the job, the stage, temperatures, the spool in use and how much filament is left, with pause, stop, light and speed controls right there.
