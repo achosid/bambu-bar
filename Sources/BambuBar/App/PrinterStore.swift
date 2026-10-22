@@ -262,8 +262,9 @@ final class PrinterStore {
         } else {
             discovered.append(printer)
         }
-        // Follow a printer when DHCP hands it a new address.
-        if let session = session(printer.serial), session.config.host != printer.host, !isDemo {
+        // Follow a printer when DHCP hands it a new address. A printer that isn't announcing (another subnet,
+        // or away from home over a VPN) keeps its saved address, and a saved hostname is never replaced.
+        if let session = session(printer.serial), session.config.host != printer.host, session.config.hostIsIPAddress, !isDemo {
             session.config.host = printer.host
             saveConfigs()
             session.restart()

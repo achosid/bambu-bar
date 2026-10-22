@@ -64,7 +64,7 @@ struct SetupPage: View {
                 }
                 DisclosureGroup("Enter address manually", isExpanded: $manual) {
                     VStack(spacing: 10) {
-                        field("IP address", text: $host, prompt: "192.168.1.50")
+                        field("IP address or hostname", text: $host, prompt: "192.168.1.50 or printer.example.lan")
                         field("Serial number", text: $serial, prompt: "22E…")
                         field("Name", text: $name, prompt: "My P2S")
                     }
@@ -353,13 +353,13 @@ struct SetupPage: View {
     }
 
     private var canConnect: Bool {
-        !host.trimmingCharacters(in: .whitespaces).isEmpty && !serial.trimmingCharacters(in: .whitespaces).isEmpty
+        !PrinterConfig.normalizedHost(host).isEmpty && !serial.trimmingCharacters(in: .whitespaces).isEmpty
             && code.trimmingCharacters(in: .whitespaces).count >= 4 && store.phase != .connecting
     }
 
     private func connect() {
         guard canConnect else { return }
-        let config = PrinterConfig(host: host.trimmingCharacters(in: .whitespaces),
+        let config = PrinterConfig(host: PrinterConfig.normalizedHost(host),
                                    serial: serial.trimmingCharacters(in: .whitespaces).uppercased(),
                                    name: name.trimmingCharacters(in: .whitespaces).isEmpty ? serial : name,
                                    modelCode: modelCode)

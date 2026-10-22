@@ -45,8 +45,8 @@ struct SettingsPage: View {
                         }
                     }
                     if editingConnection {
-                        row("IP address") {
-                            TextField("IP address", text: $host).textFieldStyle(.roundedBorder).frame(width: 220)
+                        row("Address") {
+                            TextField("IP address or hostname", text: $host).textFieldStyle(.roundedBorder).frame(width: 220)
                         }
                         row("Access code") {
                             SecureField("Access code", text: $code).textFieldStyle(.roundedBorder).frame(width: 220)
@@ -58,10 +58,10 @@ struct SettingsPage: View {
                             Button("Reconnect", action: applyConnection)
                                 .buttonStyle(.borderedProminent)
                                 .tint(Palette.accentDeep)
-                                .disabled(host.isEmpty || code.count < 4)
+                                .disabled(PrinterConfig.normalizedHost(host).isEmpty || code.count < 4)
                         }
                     } else {
-                        row("IP address") {
+                        row("Address") {
                             HStack(spacing: 10) {
                                 Text(config.host).foregroundStyle(.secondary).textSelection(.enabled)
                                 Button("Change…") {
@@ -75,7 +75,7 @@ struct SettingsPage: View {
                     }
                     Divider()
                     HStack {
-                        Text("Bambu Bar follows the printer if its IP address changes.")
+                        Text("Bambu Bar follows the printer to a new IP address when it sees it on this network. A hostname is kept as entered.")
                             .font(.system(size: 11.5)).foregroundStyle(.secondary)
                         Spacer()
                         Button("Forget Printer…", role: .destructive) { confirmForget = true }
@@ -183,8 +183,8 @@ struct SettingsPage: View {
     }
 
     private func applyConnection() {
-        guard var config = store.config, !host.isEmpty, code.count >= 4 else { return }
-        config.host = host.trimmingCharacters(in: .whitespaces)
+        guard var config = store.config, !PrinterConfig.normalizedHost(host).isEmpty, code.count >= 4 else { return }
+        config.host = PrinterConfig.normalizedHost(host)
         store.connect(to: config, accessCode: code)
         editingConnection = false
     }

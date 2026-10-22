@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Network
 
 /// Where to find the printer. The access code lives in the Keychain, not here.
 struct PrinterConfig: Codable, Equatable {
@@ -10,6 +11,19 @@ struct PrinterConfig: Codable, Equatable {
     var modelCode: String
 
     var modelName: String { PrinterModels.name(for: modelCode, serial: serial) }
+
+    /// An IP address or a hostname (a DNS or Tailscale MagicDNS name), as typed: spaces, a scheme or a
+    /// trailing slash pasted along with it are dropped.
+    static func normalizedHost(_ text: String) -> String {
+        var host = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let scheme = host.range(of: "://") { host = String(host[scheme.upperBound...]) }
+        while host.hasSuffix("/") { host.removeLast() }
+        return host
+    }
+
+    /// Discovery only follows a printer to a new address when the saved one is a plain IP address;
+    /// a hostname the person chose resolves on its own and is kept.
+    var hostIsIPAddress: Bool { IPv4Address(host) != nil || IPv6Address(host) != nil }
 }
 
 enum PrinterModels {
