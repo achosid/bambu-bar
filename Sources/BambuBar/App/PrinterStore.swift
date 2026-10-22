@@ -1,6 +1,5 @@
 import AppKit
 import Observation
-import WidgetKit
 
 /// What the menu bar shows next to the icon.
 enum MenuBarStyle: String, CaseIterable, Identifiable {
@@ -60,10 +59,8 @@ final class PrinterStore {
     private let defaults = UserDefaults.standard
     private let discovery = PrinterDiscovery()
     private let notifier = Notifier()
-    private var lastWidgetReload = Date.distantPast
     private var lastSnapshotWrite = Date.distantPast
     private var lastSavedKey = ""
-    private var lastWidgetKey = ""
     private var toastTask: Task<Void, Never>?
     private var insecureTLS = CommandLine.arguments.contains("--insecure-tls")
 
@@ -519,8 +516,7 @@ final class PrinterStore {
         SharedFleet(printers: sessions.map(snapshot(of:)), menuBarSerial: menuBarSession?.id, savedAt: Date())
     }
 
-    /// Writes the widgets' snapshot and asks WidgetKit to reload when something a person would notice changed.
-    /// Widget timelines extrapolate progress on their own, so routine progress needs only occasional reloads.
+    /// Writes the widgets' snapshot (a no-op without an app group, as in this fork's widget-less build).
     private func writeSnapshot(force: Bool) {
         // Demo and developer sessions must never show up in the real widgets.
         guard !isDemo else { return }
@@ -535,11 +531,6 @@ final class PrinterStore {
             lastSnapshotWrite = Date()
             lastSavedKey = key
         }
-        let elapsed = Date().timeIntervalSince(lastWidgetReload)
-        guard key != lastWidgetKey, force || elapsed > 120 else { return }
-        lastWidgetKey = key
-        lastWidgetReload = Date()
-        WidgetCenter.shared.reloadAllTimelines()
     }
 
     // MARK: - Demo

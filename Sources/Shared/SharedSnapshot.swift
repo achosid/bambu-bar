@@ -48,12 +48,14 @@ enum SharedStore {
     static let fileName = "printers.json"
 
     /// `<TeamID>.dev.rolottr.BambuBar`, read from Info.plist so the team lives in one place (the build settings).
-    static var appGroup: String {
-        Bundle.main.object(forInfoDictionaryKey: "BambuBarAppGroup") as? String ?? "PCZ6F8Q9DZ.dev.rolottr.BambuBar"
+    /// This fork builds without the widget, so there's no app group and nothing is read or written: asking for
+    /// a group container the app isn't entitled to would make macOS prompt about access to other apps' data.
+    static var appGroup: String? {
+        Bundle.main.object(forInfoDictionaryKey: "BambuBarAppGroup") as? String
     }
 
     static var containerURL: URL? {
-        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)
+        appGroup.flatMap { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: $0) }
     }
 
     static func load() -> SharedFleet? {
